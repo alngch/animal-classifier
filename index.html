@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <title>Azure Custom Vision - Animal Classifier</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; line-height: 1.6; color: #333; }
+        .container { border: 1px solid #e0e0e0; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input[type="text"] { width: 80%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; background-color: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #005a9e; }
+        #preview { max-width: 100%; height: auto; margin-top: 20px; display: none; border-radius: 8px; }
+        .result-box { margin-top: 25px; padding: 20px; border-radius: 8px; background: #f0f7ff; display: none; border-left: 5px solid #0078d4; }
+        .loading { color: #666; font-style: italic; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Animal Classification Project</h2>
+    <p>Paste an image URL below to identify the animal using the Azure Custom Vision model.</p>
+
+    <input type="text" id="imageUrlInput" placeholder="https://example.com/animal.jpg">
+    <button onclick="analyzeImage()">Analyse Image</button>
+
+    <img id="preview" src="" alt="Image Preview">
+
+    <div id="resultArea" class="result-box">
+        <strong>Top Prediction:</strong> <span id="predictionText"></span><br>
+        <strong>Confidence Score:</strong> <span id="probabilityText"></span>
+    </div>
+
+    <p id="status" class="loading"></p>
+</div>
+
+<script>
+    const CONFIG = {
+        endpoint: "https://aloysiuscvproject20260314-prediction.cognitiveservices.azure.com/customvision/v3.0/Prediction/20214b6f-1a0b-4087-954d-cdbcb19805ba/classify/iterations/animals/url",
+        predictionKey: "G3bvYZowkfpwusroD4jQIhfS17ONNpWLPT6HJ7EMFdnrfHwnb8zUJQQJ99CCACL93NaXJ3w3AAAIACOGY65V"
+    };
+
+    async function analyzeImage() {
+        const urlInput = document.getElementById('imageUrlInput').value;
+        const preview = document.getElementById('preview');
+        const resultArea = document.getElementById('resultArea');
+        const status = document.getElementById('status');
+
+        if (!urlInput) {
+            alert("Please paste an image URL first.");
+            return;
+        }
+
+        // Show preview and loading status
+        preview.src = urlInput;
+        preview.style.display = 'block';
+        resultArea.style.display = 'none';
+        status.innerText = "Consulting the AI model...";
+
+        try {
+            const response = await fetch(CONFIG.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Prediction-Key': CONFIG.predictionKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ "Url": urlInput })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to connect to Azure.");
+            }
+
+            const data = await response.json();
+            displayResults(data);
+
+        } catch (err) {
+            status.innerText = "Error: " + err.message;
+            console.error(err);
+        }
+    }
+
+    function displayResults(data) {
+        const status = document.getElementById('status');
+        const resultArea = document.getElementById('resultArea');
+        
+        status.innerText = "";
+        
+        // Custom Vision returns predictions sorted by probability
+        const topPrediction = data.predictions[0];
+
+        if (topPrediction) {
+            document.getElementById('predictionText').innerText = topPrediction.tagName;
+            document.getElementById('probabilityText').innerText = (topPrediction.probability * 100).toFixed(2) + "%";
+            resultArea.style.display = 'block';
+        } else {
+            status.innerText = "No predictions found.";
+        }
+    }
+</script>
+
+</body>
+</html>
